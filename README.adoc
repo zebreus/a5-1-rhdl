@@ -57,10 +57,116 @@ Running the test produces a blink directory with a lot of logs and output files.
 
 === Figuring out simulation and testing
 
-We want ot output verilog and also want to simulate/test our design directly with `cargo test`. As looking at test worked quite well previously I searched for a test that simulates and runs a design.
+We want ot output verilog and also want to simulate/test our design directly with `cargo test`. I will try to implement a simple design that controls three flashing lights.
 
+As looking at test worked quite well previously I searched for a test that simulates and runs a design. I got sidetracked and toyed a bit with the Blinker and PulserStart implementations. I think a got next step is to do a inverter module that inverts a signal. Not sure if it will be synchronous or not.
 
+I will start out with the https://github.com/samitbasu/rhdl/blob/0a1cc6410f1fe8d96d9a8f17dd8008b7528f7a50/rhdl/src/synchronous.rs#L70-L88[StartPulser] module from the synchronous.rs file in rhdl.
 
+.StartPulser
+[source,rust]
+----
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
+pub struct StartPulse {}
+
+impl Synchronous for StartPulse {
+    type Input = ();
+    type Output = bool;
+    type State = bool;
+    type Update = pulse_update;
+
+    const INITIAL_STATE: Self::State = false;
+    const UPDATE: fn(Self, Self::State, Self::Input) -> (Self::State, Self::Output) = pulse_update;
+}
+
+#[kernel]
+pub fn pulse_update(_params: StartPulse, state: bool, _input: ()) -> (bool, bool) {
+    note("state", state);
+    note("output", !state);
+    (true, !state)
+}
+----
+
+In the first line the module is defined as a struct. The only notable thing seems to be the Digital trait we are deriving. Not sure what it does.
+
+After that the Synchronous trait is implemented. It defines the inputs, outputs, internal state, and update behaviour of the modules.
+The StartPulse module has no inputs and outputs a single bit.
+It internally keeps track of a single bit state.
+We also define the type of our update function. I am not entirely sure, why we need to do this because the type can probably be derived from the Input, Output and State types. The update function seems to define how a synchronous module changes its state on a clock cycle. It seems to be a pure function that maps old state and input to new state and output.
+
+After the types we define the initial state of the module and give it a function matching the signature of the update function.
+
+The update function implementation is annotated with `#[kernel]` which seems to be a rhdl specific attribute that does something. Probably checking. In the function we output the inverted state and set the next state to true. This should result in one initial pulse and nothing else.
+The note function is used to log the values. I think we can get a vcd file with the values of the notes later on.
+
+I copied a test for StartPulse from the rhdl repo that simulates the module and outputs a vcd. It is shown in <<start_pulse_test>>. Based on the implementation we saw earlier, I would expect its output to be a single pulse and the state to be the inverse of the output. However the output shows that the signals dont change. I think the simulation may only run until the next change for some reason. The test even asserts that the simulation function only produces one output, which means exactly that, I think. 
+
+.StartPulse test/simulation
+[source,rust#start_pulse_test]
+----
+#[test]
+fn test_start_pulse_simulation() {
+    let input = std::iter::repeat(()).take(100);
+    let pulse = StartPulse {};
+    note_init_db();
+    let outputs = simulate(pulse, input).filter(|x| *x).count();
+    assert_eq!(outputs, 1);
+    let mut vcd_file = std::fs::File::create("start_pulse.vcd").unwrap();
+    note_take().unwrap().dump_vcd(&[], &mut vcd_file).unwrap();
+}
+----
+
+.StartPulse test/simulation output
+image::imgs/start_pulse_test1.png[]
+
+I think this is a dumb example, because we have no (or only one or two not sure) state changes in the vcd. I think we will get further with an experiment that continously changes. Lets modify the update function, so that it also flips the state on every update. I called the modified version ClockThing, because it should output a clock pulse.
+
+If we do that and run the test again, it will fail, because the simulation now produces 50 outputs instead of one, which breaks the `assert_eq!(outputs, 1)`. This is an indicator, that it works. Lets change that assertion to 50 and run again.
+
+.ClockThing fixed simulation
+image::imgs/clock_thing_test1.png[]
+
+Success, that seems to work as expected. Lets try and understand the test function. We first define an iterator over 100 inputs. I suppose the simulation runs as long as there are inputs available. Then we create our dut.
+
+The note_init_db() function is used to initialize the noteDB. noteDB seems to be the rhdl component responsible for timeseries logging. It seems like we can log values with the note function and later dump them using the `note_take()` function. The noteDB is a global (thread local) singleton, so we dont need to pass it around. Thats an interesting design choice. I think it is a good one, because it is quite annoying to pass around logging infrastructure. As its thread_local, we probably can probably just trust it to work in most situations. 
+
+The simulate function takes an iterator over inputs and returns an iterator over the outputs. I really like this approach to simulation. Not sure how timings and stuff are done, probably this only works for synchronous circuits. I just realized that we are filtering the result to only contain results where the output is high, which is probably the reason, why our output is only 50 instead of 100. 100 would make more sense as we also have 100 inputs. If we remove the filter, we get 100 outputs.
+
+The last part of the test writes the vcd file. The dump_vcd function takes a list of signals to dump. The dump_vcd function also has an input for clocks, I think we can put some extra clocks in here to have a reference clock in the vcd. Not interesting for now.
+
+=== Implementing the inverter
+
+It should be easy to implement a inverter with the knowledge I have now. 
+
+We first define a struct for the inverter. Then we implement `Synchronous` for it. It takes a boolean as an input, and produces an inverted boolean as an output. It has no internal state. The update function is quite simple, it just returns he inverted input.
+
+[source,rust]
+----
+include::src/inverter.rs[tag=inverter]
+----
+
+We add a test that simulates the inverter and creates a vcd file. As an input we use a sequence of predefined inputs. The ouput should be the inverted input. The vcd file should show the input and output signals. The vcd file is shown below.
+
+image::imgs/inverter_test1.png[]
+
+The simulation seems to work as expected. The input is inverted and the vcd file shows the input and output signals.
+
+NOTE:: I am viewing the traces with the WaveTrace vscode extension
+
+=== Testing the inverter
+
+For now we only simulated the inverter, but we also want to test it. So I will now attempt to create a testcase that verifies that our ouputs look as expected. The most basic idea is to collect the simulation results into a Vec and compare it against a sequence of expected outputs. This works well, but is only useful for tests, where we can specify the expected output. So tests with unknown runtime can probably not be tested using this approach.
+
+[source,rust]
+----
+include::src/inverter.rs[tag=test_expected_output]
+----
+
+Testing and simulating seems to be quite straightforward lets not waste any more time here. I bet we can use the patterns we now know to do cooler stuff. 
+
+=== Shift register
+
+Lets implement a shift register. 
 
 == TODO
 
