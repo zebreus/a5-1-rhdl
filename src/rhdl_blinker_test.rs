@@ -8,6 +8,7 @@ use rhdl_fpga::{make_constrained_verilog, Constraint, PinConstraint, Result};
 
 #[test]
 fn get_blinker_synth() -> Result<()> {
+    // tag::blinker[]
     let blinker = Blinker {
         pulser: Pulser::<26> {
             one_shot: OneShot::<26> {
@@ -18,6 +19,9 @@ fn get_blinker_synth() -> Result<()> {
             },
         },
     };
+    // end::blinker[]
+
+    // tag::constraints[]
     // Make pin constraints for the outputs
     let mut constraints = (0..4)
         .map(|i| PinConstraint {
@@ -41,5 +45,6 @@ fn get_blinker_synth() -> Result<()> {
     std::fs::write("blink.pcf", &pcf)?;
     eprintln!("{}", top.module);
     rhdl_fpga::bsp::alchitry::cu::synth_yosys_nextpnr_icepack(&top, &PathBuf::from("blink"))?;
+    // end::constraints[]
     Ok(())
 }

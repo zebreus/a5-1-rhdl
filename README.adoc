@@ -41,9 +41,29 @@ I looked into the source of rhdl to figure out which commands are called. Turns 
 
 Time to figure out how to use rhdl for a dummy example.
 
+=== Looking at the test
+
+The test first defines a rhdl module for a blinker, which looks like a rusthdl module. I have hopes that rhdl has a syntax similar to rusthdl. 
+
+.The blinker module
+[source,rust]
+----
+include::src/rhdl_blinker_test.rs[blinker]
+----
+
+The second part is synthesizing the module into hardware. While rusthdl did only output verilog (I think, never tried to use yosys directly from rusthdl) rhdl seems to include a simple yosys/nextpnr/icepack toolchain to directly produce FPGA bitstreams. This is quite nice, but not what we need for this project.
+
+Running the test produces a blink directory with a lot of logs and output files. It also places a blink.v and blink.pcf file in the root of the project. The pcf probably contains some hardware related stuff. We are only interested in the verilog file. I will figure that out later, but just removing the FPGA parts should do the trick, I think.
+
+=== Figuring out simulation and testing
+
+We want ot output verilog and also want to simulate/test our design directly with `cargo test`. As looking at test worked quite well previously I searched for a test that simulates and runs a design.
+
+
+
+
 == TODO
 
-- [ ] Figure out why the yosys test fails
 
 == Existing documentation
 
