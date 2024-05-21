@@ -1,0 +1,33 @@
+= a5-1-rhdl
+A rhdl implementation of the a5/1 stream cipher
+
+== Motivation
+
+I used rusthdl before and it was quite nice. rusthdl development stopped and moved to its successor rhdl. However, rhdl is not quite finished yet, but should be usable. In this project I want to implement the a5/1 stream cipher in rhdl, to see how ready it is. I also want to document the process of using (and figuring out how to use) rhdl, so other people have it easier to get started.
+
+== Setup
+
+rhdl is currently not really documented, so we have to figure out how to install it.
+
+First I created a new rust project using `cargo init`. Now I want to add the rhdl dependencies. They dont seem to be on crates.io, so I have to add them manually. I added the following to my `Cargo.toml`:
+
+== Existing documentation
+
+I did not find any documentation besides the code itself. There are some mentions of rhdls differences to rusthdl.
+
+- Under development since 2023
+- Includes a co-compiler
+- Compiler includes
+- Type inference
+- Type checking
+- SSA transformation
+- Lowering passes for ifs, loops, etc.
+- Intermediate representation form
+- VM to run the IR
+- Generation of Verilog (other languages to be added)
+- Automated detection of timing collisions, etc.
+- Much more Rusty!
+
+- https://github.com/samitbasu/rhdl/blob/main/doc/osda2024/osda2024.pdf
+- https://github.com/samitbasu/rhdl/blob/main/doc/latte24/latte.pdf
+
