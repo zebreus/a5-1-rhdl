@@ -6,3 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+rhdl = { path = "../rhdl/rhdl" }
+rhdl-core = { path = "../rhdl/rhdl-core", features = ["iverilog"] }
+rhdl-macro = { path = "../rhdl/rhdl-macro", version = "0.0.2" }
+rhdl-std = { path = "../rhdl/rhdl-std" }
+rhdl-fpga = { path = "../rhdl/rhdl-fpga" }

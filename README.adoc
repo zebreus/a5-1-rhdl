@@ -9,7 +9,16 @@ I used rusthdl before and it was quite nice. rusthdl development stopped and mov
 
 rhdl is currently not really documented, so we have to figure out how to install it.
 
-First I created a new rust project using `cargo init`. Now I want to add the rhdl dependencies. They dont seem to be on crates.io, so I have to add them manually. I added the following to my `Cargo.toml`:
+First I created a new rust project using `cargo init`. Now I want to add the rhdl dependencies. They dont seem to be on crates.io, so I have to add them manually. I expect to need to make some changes to rhdl on the way, so I cloned the repo to my machine and added them as path dependencies. I am not yet sure which deps I need so I added all that are used by the https://github.com/samitbasu/rhdl/blob/main/rhdl/Cargo.toml[rhdl crate Cargo.toml]. I added the following to my `Cargo.toml`:
+
+```
+[dependencies]
+rhdl = { path = "../rhdl/rhdl" }
+rhdl-core = { path = "../rhdlrhdl-core", features = ["iverilog"] }
+rhdl-macro = { path = "../rhdl/rhdl-macro", version = "0.0.2" }
+rhdl-std = { path = "../rhdl/rhdl-std" }
+rhdl-fpga = { path = "../rhdl/rhdl-fpga" }
+```
 
 == Existing documentation
 
