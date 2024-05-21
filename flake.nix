@@ -25,6 +25,8 @@
             pkgs.clippy
             pkgs.rustfmt
             pkgs.lldb
+            pkgs.verilog
+            pkgs.yosys
           ];
           RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
         };
