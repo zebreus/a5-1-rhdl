@@ -1,6 +1,8 @@
 = a5-1-rhdl
 A rhdl implementation of the a5/1 stream cipher
 
+NOTE: This doc is currently more of a unstructured diary of my progress than a proper documentation. I will try to clean it up later.
+
 == Motivation
 
 I used rusthdl before and it was quite nice. rusthdl development stopped and moved to its successor rhdl. However, rhdl is not quite finished yet, but should be usable. In this project I want to implement the a5/1 stream cipher in rhdl, to see how ready it is. I also want to document the process of using (and figuring out how to use) rhdl, so other people have it easier to get started.
@@ -19,6 +21,21 @@ rhdl-macro = { path = "../rhdl/rhdl-macro", version = "0.0.2" }
 rhdl-std = { path = "../rhdl/rhdl-std" }
 rhdl-fpga = { path = "../rhdl/rhdl-fpga" }
 ```
+
+I am not sure what I should do next. I think I should first verify that rhdl works at all on my machine. I change into the rhdl repo and try to run `cargo test`. errros, that suggest icarus verilog is missing I think. I will add it to PATH and try again. Tests pass this time. *`iverilog` needs to be in the path for rhdl to work*. One test still fails, as it seems to require a `yosys` binary. I will install it and try again. I installed yosys, but the test still fails. However, the logs indicate, that it synthesizes but is missing some kind of file or something in the end. Ill ignore it for now.
+
+I think the test that requires yosys probably contains a full example, as yosys is probably used quite late in the pipeline. So I take a look at that test (`test synchronous::get_blinker_synth`). Seems to be a full example, I will try to add it to my repo and get it to run here. Probably without the yosys part.
+
+.That test
+[source,rust]
+----
+include::src/rhdl_blinker_test.rs[]
+----
+
+
+== TODO
+
+- [ ] Figure out why the yosys test fails
 
 == Existing documentation
 
@@ -40,3 +57,64 @@ I did not find any documentation besides the code itself. There are some mention
 - https://github.com/samitbasu/rhdl/blob/main/doc/osda2024/osda2024.pdf
 - https://github.com/samitbasu/rhdl/blob/main/doc/latte24/latte.pdf
 
+== Appendix
+
+.Logs of the failing yosys test
+[source]
+----
+...
+Using template $paramod$e51a8a571bee774247b38f52d6e85fd62ae52cea\$lut for cells of type $lut.
+Using template $paramod\$lut\WIDTH=32'00000000000000000000000000000011\LUT=8'11111000 for cells of type $lut.
+Using template $paramod\$lut\WIDTH=32'00000000000000000000000000000010\LUT=4'1110 for cells of type $lut.
+No more expansions possible.
+<suppressed ~296 debug messages>
+Removed 0 unused cells and 155 unused wires.
+
+2.47. Executing AUTONAME pass.
+Renamed 789 objects in module top (18 iterations).
+<suppressed ~283 debug messages>
+
+2.48. Executing HIERARCHY pass (managing design hierarchy).
+
+2.48.1. Analyzing design hierarchy..
+Top module:  \top
+
+2.48.2. Analyzing design hierarchy..
+Top module:  \top
+Removed 0 unused modules.
+
+2.49. Printing statistics.
+
+=== top ===
+
+   Number of wires:                171
+   Number of wire bits:           1698
+   Number of public wires:         171
+   Number of public wire bits:    1698
+   Number of memories:               0
+   Number of memory bits:            0
+   Number of processes:              0
+   Number of cells:                174
+     SB_CARRY                       48
+     SB_DFF                          1
+     SB_DFFESR                      26
+     SB_DFFESS                       1
+     SB_DFFSR                       26
+     SB_LUT4                        72
+
+2.50. Executing CHECK pass (checking for obvious problems).
+Checking module top...
+Found and reported 0 problems.
+
+2.51. Executing JSON backend.
+
+End of script. Logfile hash: cea76f269f, CPU: user 1.21s system 0.02s, MEM: 41.12 MB peak
+Yosys 0.38 (git sha1 543faed9c8c, gcc 13.2.0 -fPIC -Os)
+Time spent: 48% 21x read_verilog (0 sec), 9% 24x opt_clean (0 sec), ...
+
+Error: No such file or directory (os error 2)
+
+
+failures:
+    synchronous::get_blinker_synth
+----
