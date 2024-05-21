@@ -27,6 +27,8 @@
             pkgs.lldb
             pkgs.verilog
             pkgs.yosys
+            pkgs.nextpnr
+            pkgs.icestorm
           ];
           RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
         };

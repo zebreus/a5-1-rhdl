@@ -1,3 +1,11 @@
+use std::path::PathBuf;
+
+use rhdl::{
+    bits::bits,
+    synchronous::{Blinker, OneShot, Pulser, Strobe},
+};
+use rhdl_fpga::{make_constrained_verilog, Constraint, PinConstraint, Result};
+
 #[test]
 fn get_blinker_synth() -> Result<()> {
     let blinker = Blinker {
