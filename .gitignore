@@ -3,3 +3,4 @@
 *.v
 *.pcf
 top.json
+!/shift_register.v

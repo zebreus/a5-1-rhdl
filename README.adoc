@@ -166,10 +166,80 @@ Testing and simulating seems to be quite straightforward lets not waste any more
 
 === Shift register
 
-Lets implement a shift register. 
+Lets implement a shift register. The synchronous trait seems to have the clock integrated, so we just need a single boolean input and output. In the simultation every new input will result in a clock cycle. The implementation and simulation is shown below.
+
+[source,rust]
+----
+include::src/shift_register.rs[tag=main]
+----
+
+Simulating it yields the expected results, the output signal is the input signal delayed by four clock cycles.
+
+image::imgs/shift_register_test1.png[]
+
+The most tricky part here was to access individual bits of the state `Bits<4>`. I needed to use something like `get_bit::<4>(state, 3)`, which is not quite obvious. I tried `state[3]` and `state.get_bit(3)` but both dont work. I guess that is one of the restrictions that apply in kernel functions. I found it quite usefull to reference https://github.com/samitbasu/rhdl/blob/0a1cc6410f1fe8d96d9a8f17dd8008b7528f7a50/rhdl/src/tests.rs[rhdl/src/test.rs] for understanding how I can do things in kernel functions.
+
+Looking at the implementation of get_bit (shown below), we can see that it is not a function but a struct that does weird stuff. But there is also a function, I am confused. Maybe some of the kernel magic has something to do with having a function and a struct with the same name. I will try to understand that later.
+
+.https://github.com/samitbasu/rhdl/blob/0a1cc6410f1fe8d96d9a8f17dd8008b7528f7a50/rhdl-std/src/impl_get_bit.rs[rhdl-std/src/impl_get_bit.rs]
+[source,rust]
+----
+pub fn get_bit<const N: usize>(x: Bits<N>, i: u8) -> bool {
+    (x.0 >> i) & 1 == 1
+}
+
+fn vm_get_bit(args: &[rhdl_core::TypedBits]) -> anyhow::Result<rhdl_core::TypedBits> {
+    args[0].get_bit(args[1].as_i64()? as usize)
+}
+
+#[allow(non_camel_case_types)]
+pub struct get_bit<const N: usize> {}
+
+impl<const N: usize> DigitalFn for get_bit<N> {
+    fn kernel_fn() -> Option<KernelFnKind> {
+        Some(KernelFnKind::Extern(ExternalKernelDef {
+            name: format!("get_bit_{N}"),
+            body: format!(
+                "function [0:0] get_bit_{N}(input [{}:0] a, input integer i); get_bit_{N} = a[i]; endfunction",
+                N - 1,
+            ),
+            vm_stub: Some(vm_get_bit),
+        }))
+    }
+}
+----
+
+=== Generating verilog for the shift register
+
+In the first example we also generated verilog, lets try doing that for our shift register. I am interested in whether the generated verilog has a clock, or if the implicit clocking is just a detail of the simulator. 
+
+In the first example we generated verilog using the `make_constrained_verilog`, but that one just seems to apply for FPGAs as it comes from the rhdl_fpga module. The more generic function seems to be `generate_verilog`. I will try to use that one, but it requires something of type module. In the tests designs are converted to modules using the compile_design function, so we will also use that. Note that we only synthesized the update function and not the whole module with the initial state. I dont know yet how to do that.
+
+The compile_design method fails, because `state << 4` is not supported yet. I will try to fix that later. For now I found that the verilog generation part requires the second parameter to be a Bits, but that is documented nowhere.
+
+I added a test case that generates a verilog file:
+
+[source,rust]
+----
+include::src/shift_register.rs[tag=generate_verilog]
+----
+
+The generated verilog file is shown below.
+
+[source,verilog]
+----
+include::shift_register.v[]
+----
+
+The generated verilog is only a function, which is not really what I expected, but I guess it makes sense, considering that we only synthesized the update function. I wonder how a module with submodules would look like. As long as all parts are `Synchronous`, the update can probably be broken down to a single function. All the stateful things like `Bits` and their operations are probably implemented in directly in verilog.
 
 == TODO
 
+- [ ]: Understand how kernel functions work and what restrictions apply
+- [ ]: Understand the function structs in kernel functions (like `get_bit`)
+- [ ]: Try to adjust set_bit and get_bit to check for a valid index for the given bit size
+- [ ]: Try to implement a helper function for generating verilog from a synchronous module
+- [ ]: Fix stuff like `something << 4`
 
 == Existing documentation
 
