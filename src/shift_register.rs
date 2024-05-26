@@ -31,9 +31,9 @@ pub fn shift_register_update(
     let mut new_state: Bits<4> = state << bits::<4>(1);
     let output_bit = get_bit::<4>(state, 3);
     new_state = set_bit::<4>(new_state, 0, input);
-    note("state", state);
-    note("output", output_bit);
-    note("input", input);
+    // note("state", state);
+    // note("output", output_bit);
+    // note("input", input);
     (new_state, output_bit)
 }
 
@@ -79,6 +79,21 @@ mod test {
         std::fs::write("shift_register.v", module_code).unwrap();
     }
     // end::generate_verilog[]
+
+    // tag::generate_verilog_module[]
+    #[test]
+    fn test_generate_verilog_module() {
+        let Some(KernelFnKind::Kernel(kernel)) =
+            <ShiftRegister as Synchronous>::Update::kernel_fn()
+        else {
+            panic!("No kernel function found");
+        };
+        let design = &compile_design(kernel).unwrap();
+        let verilog = generate_verilog(design).unwrap();
+        let module_code = format!("{}", verilog);
+        std::fs::write("shift_register.v", module_code).unwrap();
+    }
+    // end::generate_verilog_module[]
 
     // tag::main[]
 }
