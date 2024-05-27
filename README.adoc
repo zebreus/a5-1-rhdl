@@ -30,9 +30,9 @@ I copied that test, but the imports are still missing. I will use rust-analyzer 
 
 
 .That test
-[source,rust]
+[source,rust,indent=0]
 ----
-include::src/rhdl_blinker_test.rs[]
+include::src/rhdl_blinker_test.rs[tag=main]
 ----
 
 Seems to work as good as in the rhdl repo. The example is targeting fpgas, which means we run into the yosys error from before. Lets try to understnad and fix it. Maybe it has something to do with json, as it appears after the `Executing JSON backend.` step. I will consult a search engine. No actionable results. Proper debugging would probably involve to convince yosys to print more debug output. before i try this I just add some more dependencies to my system, hoping that it will fix the problem. `nextpnr`, `netlistsvg`, `mcy`, `arachne-pnr`, `yosys-synlig`. Does not change anything.
@@ -46,9 +46,9 @@ Time to figure out how to use rhdl for a dummy example.
 The test first defines a rhdl module for a blinker, which looks like a rusthdl module. I have hopes that rhdl has a syntax similar to rusthdl. 
 
 .The blinker module
-[source,rust]
+[source,rust,indent=0]
 ----
-include::src/rhdl_blinker_test.rs[blinker]
+include::src/rhdl_blinker_test.rs[tag=blinker]
 ----
 
 The second part is synthesizing the module into hardware. While rusthdl did only output verilog (I think, never tried to use yosys directly from rusthdl) rhdl seems to include a simple yosys/nextpnr/icepack toolchain to directly produce FPGA bitstreams. This is quite nice, but not what we need for this project.
@@ -232,6 +232,7 @@ include::shift_register.v[]
 ----
 
 The generated verilog is only a function, which is not really what I expected, but I guess it makes sense, considering that we only synthesized the update function. I wonder how a module with submodules would look like. As long as all parts are `Synchronous`, the update can probably be broken down to a single function. All the stateful things like `Bits` and their operations are probably implemented in directly in verilog.
+
 
 == TODO
 

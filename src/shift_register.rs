@@ -31,9 +31,9 @@ pub fn shift_register_update(
     let mut new_state: Bits<4> = state << bits::<4>(1);
     let output_bit = get_bit::<4>(state, 3);
     new_state = set_bit::<4>(new_state, 0, input);
-    // note("state", state);
-    // note("output", output_bit);
-    // note("input", input);
+    note("state", state);
+    note("output", output_bit);
+    note("input", input);
     (new_state, output_bit)
 }
 
