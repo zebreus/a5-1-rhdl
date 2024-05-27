@@ -11,4 +11,6 @@ rhdl-core = { path = "../rhdl/rhdl-core", features = ["iverilog"] }
 rhdl-macro = { path = "../rhdl/rhdl-macro", version = "0.0.2" }
 rhdl-std = { path = "../rhdl/rhdl-std" }
 rhdl-fpga = { path = "../rhdl/rhdl-fpga" }
+rhdl-bits = { path = "../rhdl/rhdl-bits" }
 itertools = "0.13.0"
+bitvec = "1.0.1"

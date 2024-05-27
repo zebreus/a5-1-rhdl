@@ -233,7 +233,30 @@ include::shift_register.v[]
 
 The generated verilog is only a function, which is not really what I expected, but I guess it makes sense, considering that we only synthesized the update function. I wonder how a module with submodules would look like. As long as all parts are `Synchronous`, the update can probably be broken down to a single function. All the stateful things like `Bits` and their operations are probably implemented in directly in verilog.
 
+=== Implementing an UART receiver
 
+We need an UART transmitter and receiver for the a5/1 implementation. I will start with the receiver, because it is probably easier. <<uart-receiver-vhdl>> shows a reference implementation in VHDL.
+
+First I will try to implement the receiver using a synchronous rhdl module. If that does not work, I will look into how to write a asynchronous module, but I hope that wont be neccessary. 
+
+Lets start with the interface of the receiver. Luckily the receiver only has input/output ports and no inout ports. I choose to use a struct for the in and outputs, so I can name the signals. The VHDL interface (<<uart-receiver-vhdl-interface>>) is transformed to the rhdl structs show in <<uart-receiver-rhdl-interface>>.
+
+.UART interface in VHDL
+[source#uart-receiver-vhdl-interface,vhdl]
+----
+include::src/uart/uart_receiver.vhdl[tag=interface]
+----
+
+.UART interface in rhdl
+[source#uart-receiver-rhdl-interface,rust]
+----
+include::src/uart/uart_receiver.rs[tag=interface]
+----
+
+Note that there is no `clock` signal in RHDL, because the `Synchronous` trait handles that for us. 
+
+
+ I will try to implement a simple UART receiver that outputs a byte when a start bit is detected. I will use the following parameters for the UART:
 == TODO
 
 - [ ]: Understand how kernel functions work and what restrictions apply
@@ -322,4 +345,10 @@ Error: No such file or directory (os error 2)
 
 failures:
     synchronous::get_blinker_synth
+----
+
+.UART receiver reference
+[source#uart-receiver-vhdl,vhdl]
+----
+include::src/uart/uart_receiver.vhdl[]
 ----
