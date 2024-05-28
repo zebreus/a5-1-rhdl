@@ -253,10 +253,62 @@ include::src/uart/uart_receiver.vhdl[tag=interface]
 include::src/uart/uart_receiver.rs[tag=interface]
 ----
 
-Note that there is no `clock` signal in RHDL, because the `Synchronous` trait handles that for us. 
+NOTE: There is no explicit `clock` signal in RHDL, because the `Synchronous` trait handles that for us. 
+
+.How the UART receiver works
+1. The receiver waits until the dataline goes low. This is the start signal.
+2. Then the receiver waits for a bitlength until the first bit is transmitted.
+3. Then the receiver checks the value of the data line eight times, each time in the middle of a bitlength interval. The values we read are the bits of the byte.
+4. After the last bit the dataline should go high again. This is the stop signal. (Our implementation will not check for this and just output the byte).
+5. Wait for the next start signal.
+
+Lets take a short moment to think about what internal state we need. We obviously need to keep track of what the module is doing right now. Also we need a register to store the bits we received until they are ready. We maybe also need to store whether the content of that register is currently valid. 
+
+I think we can implement the receiver as a state machine. The states are `Ready`, `Receiving`, and `Stop`. The `Ready` state is the initial state of the receiver. Here we just wait for the dataline to go low. In the `Receiving` state the receiver waits for a bit and then samples the dataline to read a bit. The `Stop` state comes after the last bit is received and the dataline goes high again. It instantly transitions back to the `Ready` state. The `Receiving` state also needs some substate to keep track of how many bits were received so far. We define these three states as an enum in the `UartReceiverStateEnum` enum.
+
+We still need the data register and the valid signal. rhdl requires us to define a single type that represents the current state of the module. We use a struct, that contains the `UartReceiverStateEnum` and the data register. The valid signal is not stored here, because we can probably derive it from the state enum (The data is valid, when we transition from `Receiving` to `Stop`).
+
+.The state struct of out UART receiver
+[source,rust]
+----
+include::src/uart/uart_receiver.rs[tag=state]
+----
+
+//TODO: Understand the struct
+
+The next step is to define an update function that maps the previous input and the state to the next state and output. The update function is annotated with the `#[kernel]` macro. Doing this causes rhdl to do two things. First rhdl will verify that our function is only doing things that rhdl can convert to hardware and provide us with error messages if it does not. Secondly rhdl will generate a struct with the same name as the function, that contains some kind of representation of the function, which I dont fully understand yet. I think that struct is then used when we are generating verilog.
+
+WARNING: While the `#[kernel]` does a lot of checks, it does not catch everything that is forbidden when synthesizing hardware. For example, the `state << 4` error we encountered earlier is not caught by the `#[kernel]` macro. There are also a lot of restrictions that are not things that can not be converted to hardware, but things that are not implemented by rhdl yet.
+
+The update function is quite long, but structurally quite simple. We first have a big match statement, that figures out the `next_state` based on the previous state and current input. You probably dont need to read the code, if you understood the previous section about the state machine.
+
+Below the match statement, we define the output of the module. The data is just copied from the `next_state` and valid is set to true, if we are in the `Stop` state. In the end our function returns the `next_state` and the output.
+
+We use the `note` function to log values in the update function. Later on we will see, how we can export and visualize these values.
+
+NOTE: The `note` function logs values to a global singleton note database
 
 
- I will try to implement a simple UART receiver that outputs a byte when a start bit is detected. I will use the following parameters for the UART:
+.The update function of the UART receiver
+[source,rust]
+----
+include::src/uart/uart_receiver.rs[tag=update]
+----
+
+Now we can bring everything together in the `UartReceiver` struct. We implement the `Synchronous` trait for it. The `Synchronous` trait requires us to define the input, output, state, and update function of the module. We also need to define the initial state of the module.
+
+.The Synchronous implementation for our UART receiver
+[source,rust]
+----
+include::src/uart/uart_receiver.rs[tag=synchronous]
+----
+
+// TODO: 
+.TODO: write about testing
+- Testing that it compiles to verilog
+- Testing to get traces for debugging
+- Testing for correctness
+
 == TODO
 
 - [ ]: Understand how kernel functions work and what restrictions apply
