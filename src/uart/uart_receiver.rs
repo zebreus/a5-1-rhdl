@@ -3,7 +3,7 @@ use rhdl_core::{note, Synchronous};
 use rhdl_std::set_bit;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
-pub struct UARTReceiver {
+pub struct UartReceiver {
     // TODO: Crashes when generating verilog and there are no fields in the struct
     /// Duration of a single bit in clock cycles
     bitlength: Bits<32>,
@@ -11,11 +11,11 @@ pub struct UARTReceiver {
     half_bitlength: Bits<32>,
 }
 
-impl UARTReceiver {
+impl UartReceiver {
     #[allow(dead_code)]
-    /// Create a new UARTReceiver with a given clock speed and bit rate.
+    /// Create a new UartReceiver with a given clock speed and bit rate.
     pub fn new(clock_speed: u128, bit_rate: u128) -> Self {
-        UARTReceiver {
+        UartReceiver {
             bitlength: Bits(clock_speed / bit_rate),
             half_bitlength: Bits(((clock_speed / bit_rate) - 1) / 2),
         }
@@ -24,7 +24,7 @@ impl UARTReceiver {
 
 // tag::interface[]
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
-pub struct UARTReceiverInput {
+pub struct UartReceiverInput {
     /// Reset signal. Pull high to reset the state machine.
     reset: bool,
     /// rs232 data input
@@ -32,7 +32,7 @@ pub struct UARTReceiverInput {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
-pub struct UARTReceiverOutput {
+pub struct UartReceiverOutput {
     /// Current output data
     data: Bits<8>,
     /// Set to high, when data is valid
@@ -45,7 +45,7 @@ pub struct UARTReceiverOutput {
 // TODO: Deriving Digital for enums requires rhdl-bits to be a explicit dependency. This is a bug
 // tag::state[]
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
-pub enum UARTReceiverStateEnum {
+pub enum UartReceiverStateEnum {
     #[default]
     Ready,
     Data(u8),
@@ -53,33 +53,33 @@ pub enum UARTReceiverStateEnum {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
-pub struct UARTReceiverState {
+pub struct UartReceiverState {
     // TODO: Digital is missing for u32 and u 64
     counter: Bits<32>,
     /// Current output data
     data: Bits<8>,
-    state: UARTReceiverStateEnum,
+    state: UartReceiverStateEnum,
 }
 // end::state[]
 
-impl UARTReceiverState {
+impl UartReceiverState {
     const fn default() -> Self {
-        UARTReceiverState {
+        UartReceiverState {
             data: bits::<8>(0),
-            state: UARTReceiverStateEnum::Ready,
+            state: UartReceiverStateEnum::Ready,
             counter: Bits(0),
         }
     }
 }
 
 // tag::synchronous[]
-impl Synchronous for UARTReceiver {
-    type Input = UARTReceiverInput;
-    type Output = UARTReceiverOutput;
-    type State = UARTReceiverState;
+impl Synchronous for UartReceiver {
+    type Input = UartReceiverInput;
+    type Output = UartReceiverOutput;
+    type State = UartReceiverState;
     type Update = uart_receiver_update;
 
-    const INITIAL_STATE: Self::State = UARTReceiverState::default();
+    const INITIAL_STATE: Self::State = UartReceiverState::default();
     const UPDATE: fn(Self, Self::State, Self::Input) -> (Self::State, Self::Output) =
         uart_receiver_update;
 }
@@ -89,29 +89,29 @@ impl Synchronous for UARTReceiver {
 // tag::update[]
 #[kernel]
 pub fn uart_receiver_update(
-    params: UARTReceiver,
-    state: UARTReceiverState,
-    input: UARTReceiverInput,
-) -> (UARTReceiverState, UARTReceiverOutput) {
+    params: UartReceiver,
+    state: UartReceiverState,
+    input: UartReceiverInput,
+) -> (UartReceiverState, UartReceiverOutput) {
     note("rs232", input.rs232);
 
-    let next_state: UARTReceiverState = match state.state {
-        UARTReceiverStateEnum::Ready => {
+    let next_state: UartReceiverState = match state.state {
+        UartReceiverStateEnum::Ready => {
             if input.rs232 == false {
-                UARTReceiverState {
+                UartReceiverState {
                     data: bits::<8>(0),
-                    state: UARTReceiverStateEnum::Data(0),
+                    state: UartReceiverStateEnum::Data(0),
                     counter: params.bitlength + params.bitlength - 2,
                 }
             } else {
-                UARTReceiverState {
+                UartReceiverState {
                     data: state.data,
-                    state: UARTReceiverStateEnum::Ready,
+                    state: UartReceiverStateEnum::Ready,
                     counter: Bits::<32>(0),
                 }
             }
         }
-        UARTReceiverStateEnum::Data(index) => {
+        UartReceiverStateEnum::Data(index) => {
             let new_data = if state.counter == (params.half_bitlength) {
                 set_bit::<8>(state.data, index, input.rs232)
             } else {
@@ -120,36 +120,36 @@ pub fn uart_receiver_update(
 
             if state.counter == 0 {
                 if index == 7 {
-                    UARTReceiverState {
+                    UartReceiverState {
                         data: new_data,
-                        state: UARTReceiverStateEnum::Stop,
+                        state: UartReceiverStateEnum::Stop,
                         counter: state.counter,
                     }
                 } else {
-                    UARTReceiverState {
+                    UartReceiverState {
                         data: new_data,
-                        state: UARTReceiverStateEnum::Data(index + 1),
+                        state: UartReceiverStateEnum::Data(index + 1),
                         counter: params.bitlength - 1,
                     }
                 }
             } else {
-                UARTReceiverState {
+                UartReceiverState {
                     data: new_data,
-                    state: UARTReceiverStateEnum::Data(index),
+                    state: UartReceiverStateEnum::Data(index),
                     counter: state.counter - 1,
                 }
             }
         }
-        UARTReceiverStateEnum::Stop => UARTReceiverState {
+        UartReceiverStateEnum::Stop => UartReceiverState {
             data: state.data,
-            state: UARTReceiverStateEnum::Ready,
+            state: UartReceiverStateEnum::Ready,
             counter: Bits::<32>(0),
         },
     };
 
-    let output = UARTReceiverOutput {
+    let output = UartReceiverOutput {
         data: next_state.data,
-        valid: state.state == UARTReceiverStateEnum::Stop,
+        valid: state.state == UartReceiverStateEnum::Stop,
     };
 
     note("next_state", next_state);
@@ -162,57 +162,57 @@ pub fn uart_receiver_update(
 
 #[cfg(test)]
 mod test {
-    use super::{UARTReceiver, UARTReceiverInput};
+    use super::{UartReceiver, UartReceiverInput};
     use itertools::{repeat_n, Itertools};
     use rhdl::synchronous::simulate_with_clock;
     use rhdl_core::ClockDetails;
     use rhdl_core::{note_init_db, note_take};
     use rhdl_fpga::{make_constrained_verilog, Constraint};
 
-    impl UARTReceiverInput {
-        /// Create a UARTReceiverInput from a single bit of data.
+    impl UartReceiverInput {
+        /// Create a UartReceiverInput from a single bit of data.
         ///
         /// Reset is implicitly false.
         fn new(data: bool) -> Self {
-            UARTReceiverInput {
+            UartReceiverInput {
                 reset: false,
                 rs232: data,
             }
         }
 
-        /// Create a array of UARTReceiverInputs from a single byte of data.
-        fn from_byte(data: u8) -> impl Iterator<Item = UARTReceiverInput> {
+        /// Create a array of UartReceiverInputs from a single byte of data.
+        fn from_byte(data: u8) -> impl Iterator<Item = UartReceiverInput> {
             (0..8)
                 .map(move |i| (data >> i) & 1 == 1)
-                .map(|b| UARTReceiverInput::new(b))
+                .map(|b| UartReceiverInput::new(b))
         }
     }
 
-    impl UARTReceiver {
-        fn test_input_bit(&self, data: bool) -> impl Iterator<Item = UARTReceiverInput> {
+    impl UartReceiver {
+        fn test_input_bit(&self, data: bool) -> impl Iterator<Item = UartReceiverInput> {
             let bitlength = self.bitlength.0 as usize;
             // Start bit
-            repeat_n(UARTReceiverInput::new(data), bitlength)
+            repeat_n(UartReceiverInput::new(data), bitlength)
         }
-        fn test_input_byte(&self, data: u8) -> impl Iterator<Item = UARTReceiverInput> {
+        fn test_input_byte(&self, data: u8) -> impl Iterator<Item = UartReceiverInput> {
             let bitlength = self.bitlength.0 as usize;
             // Start bit
-            UARTReceiverInput::from_byte(data).flat_map(move |bit| repeat_n(bit, bitlength))
+            UartReceiverInput::from_byte(data).flat_map(move |bit| repeat_n(bit, bitlength))
         }
 
-        fn test_reset(&self) -> impl Iterator<Item = UARTReceiverInput> {
+        fn test_reset(&self) -> impl Iterator<Item = UartReceiverInput> {
             [
-                UARTReceiverInput {
+                UartReceiverInput {
                     reset: true,
                     rs232: true,
                 },
-                UARTReceiverInput::new(true),
+                UartReceiverInput::new(true),
             ]
             .into_iter()
         }
 
         // TODO: Implement As<usize> for Bits
-        fn test_transmission(&self, data: u8) -> impl Iterator<Item = UARTReceiverInput> + '_ {
+        fn test_transmission(&self, data: u8) -> impl Iterator<Item = UartReceiverInput> + '_ {
             // Start bit
             self.test_input_bit(false)
                 // Data bits
@@ -224,7 +224,7 @@ mod test {
 
     #[test]
     fn get_blinker_fpga() {
-        let blinker = UARTReceiver::new(19200 /*12000000*/, 9600);
+        let blinker = UartReceiver::new(19200 /*12000000*/, 9600);
         let constraints = Vec::new();
         let top = make_constrained_verilog(
             blinker,
@@ -239,7 +239,7 @@ mod test {
     }
 
     fn test_uart_receiver_at_speed(speed: u128) {
-        let uart_receiver = UARTReceiver::new(9600 * speed /*12000000*/, 9600);
+        let uart_receiver = UartReceiver::new(9600 * speed /*12000000*/, 9600);
         let input = uart_receiver
             .test_reset()
             .chain(uart_receiver.test_transmission(0b00010001))
@@ -288,24 +288,24 @@ mod test {
 
     // #[test]
     // fn test_uart_receiver() {
-    //     let mut input: Vec<UARTReceiverInput> = vec![
-    //         UARTReceiverInput {
+    //     let mut input: Vec<UartReceiverInput> = vec![
+    //         UartReceiverInput {
     //             reset: true,
     //             rs232: true,
     //         },
-    //         UARTReceiverInput::new(true),
+    //         UartReceiverInput::new(true),
     //         // start bit
-    //         UARTReceiverInput::new(false),
+    //         UartReceiverInput::new(false),
     //     ];
-    //     input.append(&mut UARTReceiverInput::from_byte(0b00010001));
+    //     input.append(&mut UartReceiverInput::from_byte(0b00010001));
     //     // stop bit
-    //     input.push(UARTReceiverInput::new(true));
+    //     input.push(UartReceiverInput::new(true));
     //     //  Idle a bit more for a better trace
-    //     input.push(UARTReceiverInput::new(true));
-    //     input.push(UARTReceiverInput::new(true));
-    //     input.push(UARTReceiverInput::new(true));
+    //     input.push(UartReceiverInput::new(true));
+    //     input.push(UartReceiverInput::new(true));
+    //     input.push(UartReceiverInput::new(true));
 
-    //     let uart_receiver = UARTReceiver::new(19200 /*12000000*/, 9600);
+    //     let uart_receiver = UartReceiver::new(19200 /*12000000*/, 9600);
 
     //     note_init_db();
     //     simulate_with_clock(
@@ -320,13 +320,13 @@ mod test {
 
     // #[test]
     // fn test_uart_receiver_can_receive_byte() {
-    //     let mut input: Vec<UARTReceiverInput> = vec![UARTReceiverInput {
+    //     let mut input: Vec<UartReceiverInput> = vec![UartReceiverInput {
     //         reset: true,
     //         rs232: false,
     //     }];
-    //     input.append(&mut UARTReceiverInput::from_byte(0x42));
+    //     input.append(&mut UartReceiverInput::from_byte(0x42));
 
-    //     let uart_receiver = UARTReceiver {};
+    //     let uart_receiver = UartReceiver {};
     //     note_init_db();
     //     simulate_with_clock(
     //         uart_receiver,

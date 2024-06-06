@@ -3,7 +3,7 @@ use rhdl_core::{note, Synchronous};
 use rhdl_std::get_bit;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
-pub struct UARTSender {
+pub struct UartSender {
     // TODO: Crashes when generating verilog and there are no fields in the struct
     /// Duration of a single bit in clock cycles
     bitlength: Bits<32>,
@@ -11,11 +11,11 @@ pub struct UARTSender {
     half_bitlength: Bits<32>,
 }
 
-impl UARTSender {
-    /// Create a new UARTSender with a given clock speed and bit rate.
+impl UartSender {
+    /// Create a new UartSender with a given clock speed and bit rate.
     #[allow(dead_code)]
     pub fn new(clock_speed: u128, bit_rate: u128) -> Self {
-        UARTSender {
+        UartSender {
             bitlength: Bits(clock_speed / bit_rate),
             half_bitlength: Bits(((clock_speed / bit_rate) - 1) / 2),
         }
@@ -24,7 +24,7 @@ impl UARTSender {
 
 // tag::interface[]
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
-pub struct UARTSenderInput {
+pub struct UartSenderInput {
     /// Reset signal. Pull high to reset the state machine.
     reset: bool,
     /// Bit to send
@@ -36,7 +36,7 @@ pub struct UARTSenderInput {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
-pub struct UARTSenderOutput {
+pub struct UartSenderOutput {
     /// Set to high if the Sender is ready for the next byte
     ready: bool,
     /// rs232 data input
@@ -47,7 +47,7 @@ pub struct UARTSenderOutput {
 // TODO: Deriving Digital for enums requires rhdl-bits to be a explicit dependency. This is a bug
 // tag::state[]
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
-pub enum UARTSenderStateEnum {
+pub enum UartSenderStateEnum {
     #[default]
     Idle,
     Start,
@@ -56,34 +56,34 @@ pub enum UARTSenderStateEnum {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
-pub struct UARTSenderState {
+pub struct UartSenderState {
     /// Counter to wait for the correct length to send the next bit
     counter: Bits<32>,
     /// The data we will be sending
     data: Bits<8>,
     /// The current state of the sender
-    state: UARTSenderStateEnum,
+    state: UartSenderStateEnum,
 }
 // end::state[]
 
-impl UARTSenderState {
+impl UartSenderState {
     const fn default() -> Self {
-        UARTSenderState {
+        UartSenderState {
             data: bits::<8>(0),
-            state: UARTSenderStateEnum::Idle,
+            state: UartSenderStateEnum::Idle,
             counter: Bits(0),
         }
     }
 }
 
 // tag::synchronous[]
-impl Synchronous for UARTSender {
-    type Input = UARTSenderInput;
-    type Output = UARTSenderOutput;
-    type State = UARTSenderState;
+impl Synchronous for UartSender {
+    type Input = UartSenderInput;
+    type Output = UartSenderOutput;
+    type State = UartSenderState;
     type Update = uart_sender_update;
 
-    const INITIAL_STATE: Self::State = UARTSenderState::default();
+    const INITIAL_STATE: Self::State = UartSenderState::default();
     const UPDATE: fn(Self, Self::State, Self::Input) -> (Self::State, Self::Output) =
         uart_sender_update;
 }
@@ -93,78 +93,78 @@ impl Synchronous for UARTSender {
 // tag::update[]
 #[kernel]
 pub fn uart_sender_update(
-    params: UARTSender,
-    state: UARTSenderState,
-    input: UARTSenderInput,
-) -> (UARTSenderState, UARTSenderOutput) {
+    params: UartSender,
+    state: UartSenderState,
+    input: UartSenderInput,
+) -> (UartSenderState, UartSenderOutput) {
     note("input_data", input.data);
     note("input_valid", input.ready);
 
-    let next_state: UARTSenderState = match state.state {
-        UARTSenderStateEnum::Idle => {
+    let next_state: UartSenderState = match state.state {
+        UartSenderStateEnum::Idle => {
             if input.ready {
-                UARTSenderState {
+                UartSenderState {
                     data: input.data,
-                    state: UARTSenderStateEnum::Start,
+                    state: UartSenderStateEnum::Start,
                     counter: params.bitlength - 1,
                 }
             } else {
-                UARTSenderState {
+                UartSenderState {
                     data: state.data,
                     state: state.state,
                     counter: state.counter,
                 }
             }
         }
-        UARTSenderStateEnum::Start => {
+        UartSenderStateEnum::Start => {
             if state.counter == 0 {
-                UARTSenderState {
+                UartSenderState {
                     data: state.data,
-                    state: UARTSenderStateEnum::Data(0),
+                    state: UartSenderStateEnum::Data(0),
                     counter: params.bitlength - 1,
                 }
             } else {
-                UARTSenderState {
+                UartSenderState {
                     data: state.data,
-                    state: UARTSenderStateEnum::Start,
+                    state: UartSenderStateEnum::Start,
                     counter: state.counter - 1,
                 }
             }
         }
-        UARTSenderStateEnum::Stop => {
+        UartSenderStateEnum::Stop => {
             if state.counter == 0 {
-                UARTSenderState {
+                UartSenderState {
                     data: state.data,
-                    state: UARTSenderStateEnum::Idle,
+                    state: UartSenderStateEnum::Idle,
                     counter: params.bitlength - 1,
                 }
             } else {
-                UARTSenderState {
+                UartSenderState {
                     data: state.data,
-                    state: UARTSenderStateEnum::Stop,
+                    state: UartSenderStateEnum::Stop,
                     counter: state.counter - 1,
                 }
             }
         }
-        UARTSenderStateEnum::Data(index) => {
+        UartSenderStateEnum::Data(index) => {
             if state.counter == 0 {
                 if index == 7 {
-                    UARTSenderState {
+                    UartSenderState {
                         data: state.data,
-                        state: UARTSenderStateEnum::Stop,
+                        state: UartSenderStateEnum::Stop,
                         counter: params.bitlength - 1,
                     }
                 } else {
-                    UARTSenderState {
+                    UartSenderState {
                         data: state.data,
-                        state: UARTSenderStateEnum::Data(index + 1),
+                        state: UartSenderStateEnum::Data(index + 1),
                         counter: params.bitlength - 1,
                     }
                 }
             } else {
-                UARTSenderState {
+                UartSenderState {
                     data: state.data,
-                    state: UARTSenderStateEnum::Data(index),
+                    state: UartSenderStateEnum::Data(index),
                     counter: state.counter - 1,
                 }
             }
@@ -172,19 +172,19 @@ pub fn uart_sender_update(
     };
 
     let output = match next_state.state {
-        UARTSenderStateEnum::Idle => UARTSenderOutput {
+        UartSenderStateEnum::Idle => UartSenderOutput {
             ready: true,
             rs232: true,
         },
-        UARTSenderStateEnum::Start => UARTSenderOutput {
+        UartSenderStateEnum::Start => UartSenderOutput {
             ready: false,
             rs232: false,
         },
-        UARTSenderStateEnum::Data(index) => UARTSenderOutput {
+        UartSenderStateEnum::Data(index) => UartSenderOutput {
             ready: false,
             rs232: get_bit::<8>(next_state.data, index),
         },
-        UARTSenderStateEnum::Stop => UARTSenderOutput {
+        UartSenderStateEnum::Stop => UartSenderOutput {
             ready: false,
             rs232: true,
         },
@@ -200,7 +200,7 @@ pub fn uart_sender_update(
 
 #[cfg(test)]
 mod test {
-    use super::{UARTSender, UARTSenderInput};
+    use super::{UartSender, UartSenderInput};
     use itertools::{repeat_n, Itertools};
     use rhdl::bits::b8;
     use rhdl::synchronous::simulate_with_clock;
@@ -209,12 +209,12 @@ mod test {
     use rhdl_core::{note_init_db, note_take};
     use rhdl_fpga::{make_constrained_verilog, Constraint};
 
-    impl UARTSenderInput {
-        /// Create a UARTSenderInput from a single bit of data.
+    impl UartSenderInput {
+        /// Create a UartSenderInput from a single bit of data.
         ///
         /// Reset is implicitly false.
         fn new() -> Self {
-            UARTSenderInput {
+            UartSenderInput {
                 reset: false,
                 data: b8::default(),
                 ready: false,
@@ -222,7 +222,7 @@ mod test {
         }
 
         fn reset() -> Self {
-            UARTSenderInput {
+            UartSenderInput {
                 reset: true,
                 data: b8::default(),
                 ready: false,
@@ -230,7 +230,7 @@ mod test {
         }
 
         fn transmit(data: u8) -> Self {
-            UARTSenderInput {
+            UartSenderInput {
                 reset: false,
                 data: bits::<8>(data as u128),
                 ready: true,
@@ -238,26 +238,26 @@ mod test {
         }
     }
 
-    impl UARTSender {
-        fn test_set_byte(&self, data: u8) -> impl Iterator<Item = UARTSenderInput> {
-            repeat_n(UARTSenderInput::transmit(data), 1)
+    impl UartSender {
+        fn test_set_byte(&self, data: u8) -> impl Iterator<Item = UartSenderInput> {
+            repeat_n(UartSenderInput::transmit(data), 1)
         }
-        fn test_wait_one_cycle(&self) -> impl Iterator<Item = UARTSenderInput> {
+        fn test_wait_one_cycle(&self) -> impl Iterator<Item = UartSenderInput> {
             // Start bit
-            repeat_n(UARTSenderInput::new(), 1)
+            repeat_n(UartSenderInput::new(), 1)
         }
-        fn test_wait_one_transmission(&self) -> impl Iterator<Item = UARTSenderInput> {
+        fn test_wait_one_transmission(&self) -> impl Iterator<Item = UartSenderInput> {
             let bitlength = self.bitlength.0 as usize;
             // Start bit
-            repeat_n(UARTSenderInput::new(), bitlength * 10)
+            repeat_n(UartSenderInput::new(), bitlength * 10)
         }
 
-        fn test_reset(&self) -> impl Iterator<Item = UARTSenderInput> {
-            [UARTSenderInput::reset(), UARTSenderInput::new()].into_iter()
+        fn test_reset(&self) -> impl Iterator<Item = UartSenderInput> {
+            [UartSenderInput::reset(), UartSenderInput::new()].into_iter()
         }
 
         // TODO: Implement As<usize> for Bits
-        fn test_transmission(&self, data: u8) -> impl Iterator<Item = UARTSenderInput> + '_ {
+        fn test_transmission(&self, data: u8) -> impl Iterator<Item = UartSenderInput> + '_ {
             // Start bit
             self.test_set_byte(data)
                 // Data bits
@@ -267,7 +267,7 @@ mod test {
 
     #[test]
     fn synthesize_for_fpga() {
-        let blinker = UARTSender::new(19200 /*12000000*/, 9600);
+        let blinker = UartSender::new(19200 /*12000000*/, 9600);
         let constraints = Vec::new();
         let top = make_constrained_verilog(
             blinker,
@@ -282,7 +282,7 @@ mod test {
     }
 
     fn test_uart_sender_at_speed(speed: u128) {
-        let uart_sender = UARTSender::new(9600 * speed /*12000000*/, 9600);
+        let uart_sender = UartSender::new(9600 * speed /*12000000*/, 9600);
         let input = uart_sender
             .test_reset()
             .chain(uart_sender.test_transmission(0b01010011))
