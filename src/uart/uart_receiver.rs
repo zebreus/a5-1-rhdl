@@ -26,19 +26,19 @@ impl UartReceiver {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
 pub struct UartReceiverInput {
     /// Reset signal. Pull high to reset the state machine.
-    reset: bool,
+    pub reset: bool,
     /// rs232 data input
-    rs232: bool,
+    pub rs232: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
 pub struct UartReceiverOutput {
     /// Current output data
-    data: Bits<8>,
+    pub data: Bits<8>,
     /// Set to high, when data is valid
     ///
     /// When this is low, the data is invalid and should be ignored.
-    valid: bool,
+    pub valid: bool,
 }
 // end::interface[]
 
@@ -63,7 +63,7 @@ pub struct UartReceiverState {
 // end::state[]
 
 impl UartReceiverState {
-    const fn default() -> Self {
+    pub const fn default() -> Self {
         UartReceiverState {
             data: bits::<8>(0),
             state: UartReceiverStateEnum::Ready,

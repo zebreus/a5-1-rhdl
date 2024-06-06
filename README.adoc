@@ -309,6 +309,12 @@ include::src/uart/uart_receiver.rs[tag=synchronous]
 - Testing to get traces for debugging
 - Testing for correctness
 
+=== Implementing an UART transmitter
+
+The UART transmitter is quite similar to the UART receiver.
+
+
+
 == TODO
 
 - [ ]: Understand how kernel functions work and what restrictions apply

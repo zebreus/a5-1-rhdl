@@ -26,21 +26,21 @@ impl UartSender {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
 pub struct UartSenderInput {
     /// Reset signal. Pull high to reset the state machine.
-    reset: bool,
+    pub reset: bool,
     /// Bit to send
-    data: Bits<8>,
+    pub data: Bits<8>,
     /// Set to high to start the transmission
     ///
     /// Only works if the sender is ready
-    ready: bool,
+    pub ready: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Digital, Default)]
 pub struct UartSenderOutput {
     /// Set to high if the Sender is ready for the next byte
-    ready: bool,
+    pub ready: bool,
     /// rs232 data input
-    rs232: bool,
+    pub rs232: bool,
 }
 // end::interface[]
 
@@ -67,7 +67,7 @@ pub struct UartSenderState {
 // end::state[]
 
 impl UartSenderState {
-    const fn default() -> Self {
+    pub const fn default() -> Self {
         UartSenderState {
             data: bits::<8>(0),
             state: UartSenderStateEnum::Idle,
