@@ -1,4 +1,5 @@
 mod uart_receiver;
+mod uart_sender;
 // use rhdl::Digital;
 // use rhdl_core::Synchronous;
 

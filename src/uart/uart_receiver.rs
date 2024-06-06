@@ -12,6 +12,7 @@ pub struct UARTReceiver {
 }
 
 impl UARTReceiver {
+    #[allow(dead_code)]
     /// Create a new UARTReceiver with a given clock speed and bit rate.
     pub fn new(clock_speed: u128, bit_rate: u128) -> Self {
         UARTReceiver {
